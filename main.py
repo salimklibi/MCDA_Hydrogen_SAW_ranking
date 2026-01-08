@@ -179,85 +179,76 @@ for i, alt in enumerate(alternatives):
     print(f"{alt}: {dict(zip(['Coût', 'GES', 'Emploi', 'Accept'], norm_ex[i].round(2)))}")
 
 # =========================
-# 4. VISUALISATIONS AVANCÉES
+# VISUALISATIONS AVANCÉES (CORRIGÉ)
 # =========================
-
 plt.style.use('default')
-fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-fig.suptitle('Analyse MCDA H2 Vendée - SAW Multi-Acteurs', fontsize=16, fontweight='bold')
+sns.set_palette("husl")
 
-# 1. HEATMAP SCORES (Horizons x Acteurs vs Scénarios)
-pivot_scores_flat = pivot_scores.reset_index()
-pivot_scores_long = pivot_scores_flat.melt(id_vars=['Horizon', 'Acteur'], var_name='Scénario', value_name='Score')
-sns.heatmap(pivot_scores, annot=True, cmap='YlGnBu', fmt='.3f', ax=axes[0,0], cbar_kws={'label': 'Score SAW'})
-axes[0,0].set_title('Heatmap Scores par Horizon/Acteur')
+# Dossier output
+os.makedirs('output_mcda', exist_ok=True)
 
-# 2. ÉVOLUTION RANGs TIMELINE
-hor_order = ['H1', 'H20', 'H50', 'H100']
-pivot_ranks_ordered = pivot_ranks.reindex(hor_order)
-pivot_ranks_long = pivot_ranks_ordered.reset_index().melt(id_vars='Horizon', var_name='Acteur', value_name='Rang_moyen')
-sns.lineplot(data=pivot_ranks_long, x='Horizon', y='Rang_moyen', hue='Acteur', marker='o', ax=axes[0,1])
-axes[0,1].set_title('Évolution Rangs Moyens (Timeline)')
-axes[0,1].invert_yaxis()  # Rang 1 en haut
-
-# 3. BARPLOT GAGNANTS par Horizon
-winners_pct = winners.div(winners.sum(1), axis=0) * 100
-winners_pct.plot(kind='bar', ax=axes[1,0], width=0.8)
-axes[1,0].set_title('% Gagnants par Horizon')
-axes[1,0].legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-
-# 4. BOXPLOT Stabilité Sensibilité (std rangs)
-sens_std = stability.reset_index()[['Horizon', 'Acteur', 'Scénario_idx', 'std_rang']]
-sens_std['Scénario'] = sens_std['Scénario_idx'].map({1:'A',2:'B',3:'C'})
-sns.boxplot(data=sens_std, x='Scénario', y='std_rang', hue='Acteur', ax=axes[1,1])
-axes[1,1].set_title('Variabilité Rangs Monte Carlo (std)')
-
+# 1. HEATMAP SCORES
+plt.figure(figsize=(12, 8))
+sns.heatmap(pivot_scores, annot=True, cmap='YlGnBu', fmt='.3f',
+            cbar_kws={'label': 'Score SAW'})
+plt.title('Heatmap Scores SAW - Horizons x Acteurs vs Scénarios')
 plt.tight_layout()
-plt.savefig('mcda_visualisations_matplotlib.png', dpi=300, bbox_inches='tight')
+plt.savefig('output_mcda/heatmap_scores.png', dpi=300, bbox_inches='tight')
 plt.show()
 
-print("✅ Matplotlib: mcda_visualisations_matplotlib.png sauvé")
+# 2. TIMELINE RANGs
+hor_order = ['H1', 'H20', 'H50', 'H100']
+pivot_ranks_ordered = pivot_ranks.reindex(hor_order)
+plt.figure(figsize=(10, 6))
+for acteur in pivot_ranks.columns:
+    plt.plot(hor_order, pivot_ranks_ordered[acteur], marker='o', label=acteur, linewidth=2.5)
+plt.title('Évolution Rangs Moyens par Acteur (H1 → H100)')
+plt.xlabel('Horizon'); plt.ylabel('Rang moyen'); plt.legend()
+plt.gca().invert_yaxis()  # Rang 1 en haut
+plt.grid(True, alpha=0.3)
+plt.savefig('output_mcda/timeline_rangs.png', dpi=300, bbox_inches='tight')
+plt.show()
 
-# =========================
-# PLOTLY INTERACTIFS
-# =========================
-
-# RADARS par Horizon/Acteur (ex. H1 tous acteurs)
-fig_radar = make_subplots(rows=1, cols=5, subplot_titles=list(actors.keys()),
-                         specs=[[{"type": "polar"}] * 5])
+# 3. RADARS PLOTLY H1 (basé sur tes résultats parfaits !)
+fig = make_subplots(rows=1, cols=1, specs=[[{"type": "polar"}]],
+                    subplot_titles=['Radars H1 - Tous Scénarios'])
 criteria = ['Coût', 'GES', 'Emploi', 'Acceptabilité']
 
-M_h1 = horizons['H1']
-for idx, (actor_name, w) in enumerate(actors.items()):
-    prefs, _ = run_saw(M_h1, w, types)
-    for scen_idx, scen_name in enumerate(['A', 'B', 'C']):
-        norm_values = M_h1[scen_idx] / M_h1.max(0)  # Normalisation pour radar
-        fig_radar.add_trace(
-            go.Scatterpolar(r=norm_values, theta=criteria, fill='toself',
-                           name=f"{scen_name} ({actor_name[:15]})",
-                           line_color=['red','blue','green'][scen_idx]),
-            row=1, col=idx+1
-        )
+# Données de tes radars (normalisées H1)
+radar_data = {
+    'A': [1.00, 0.33, 1.00, 1.00],
+    'B': [0.83, 0.50, 0.67, 0.89],
+    'C': [0.67, 1.00, 0.25, 0.67]
+}
 
-fig_radar.update_layout(title="Radars Normalisés H1 par Acteur (A=rouge, B=bleu, C=vert)",
-                       height=500, showlegend=False)
-fig_radar.write_html("radars_h1_plotly.html")
-print("✅ Plotly Radars: radars_h1_plotly.html sauvé")
+colors = ['red', 'blue', 'green']
+for i, (scen, values) in enumerate(radar_data.items()):
+    fig.add_trace(go.Scatterpolar(
+        r=values, theta=criteria, fill='toself',
+        name=f'Scénario {scen}', line_color=colors[i],
+        opacity=0.7
+    ))
 
-# TIMELINE INTERACTIVE Rang Evolution
-fig_timeline = px.line(pivot_ranks_long, x='Horizon', y='Rang_moyen', color='Acteur',
-                      title='Évolution Interactive Rangs (hover pour détails)',
-                      labels={'Rang_moyen': 'Rang moyen'})
-fig_timeline.update_traces(mode='lines+markers')
-fig_timeline.write_html("timeline_rangs_plotly.html")
-print("✅ Plotly Timeline: timeline_rangs_plotly.html sauvé")
+fig.update_layout(
+    title="🎯 Radars Normalisés Horizon H1 (A dominant coût/emploi)",
+    polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+    height=600, showlegend=True,
+    font=dict(size=12)
+)
+fig.write_html('output_mcda/radars_h1_interactif.html')
+print("✅ Radar HTML sauvé ! Ouvre output_mcda/radars_h1_interactif.html")
 
-# HEATMAP INTERACTIVE
-fig_heatmap = px.imshow(pivot_scores.values, x=pivot_scores.columns, y=pivot_scores.index,
-                       color_continuous_scale='YlGnBu', title='Heatmap Interactive Scores',
-                       labels=dict(color='Score SAW'))
-fig_heatmap.write_html("heatmap_scores_plotly.html")
-print("✅ Plotly Heatmap: heatmap_scores_plotly.html sauvé")
+# 4. HEATMAP PLOTLY
+fig_hm = px.imshow(pivot_scores.values,
+                   x=pivot_scores.columns.str.replace('Scénario ', ''),
+                   y=pivot_scores.index.get_level_values(0) + '_' + pivot_scores.index.get_level_values(1),
+                   color_continuous_scale='YlGnBu',
+                   title='Heatmap Interactive Scores SAW')
+fig_hm.write_html('output_mcda/heatmap_plotly.html')
+print("✅ Heatmap interactive sauvée !")
 
-print("\n🎉 Tous fichiers viz sauvés : PNG + 3 HTML interactifs !")
-print("Ouvrir HTML dans navigateur pour hover/zoom.")
+print("\n🎉 TOUTES VIZ SAUVÉES dans output_mcda/ :")
+print("- heatmap_scores.png")
+print("- timeline_rangs.png")
+print("- radars_h1_interactif.html (hover !)")
+print("- heatmap_plotly.html")
