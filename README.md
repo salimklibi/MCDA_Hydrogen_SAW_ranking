@@ -1,7 +1,7 @@
-# Analyse MCDA Multi-Scénarios Hydrogène Vendée avec Python 3.10+, PyMCDM, pandas, matplotlib/seaborn 
+# Analyse MCDA Multi-Scénarios Hydrogène avec Python 3.10+, PyMCDM, pandas, matplotlib/seaborn 
 
 # Description
-Ce script principal effectue une analyse multi-critères décisionnelle (MCDA) pour comparer trois scénarios H2 en Vendée : production 100% locale (type A), import régional (type B), import national/UE (type C). Il applique SAW (toujours), TOPSIS et PROMETHEE II (si PyMCDM installé) sur critères coût, GES, emploi, acceptabilité, avec poids par acteurs (industriels, collectivités, etc.) et horizons de sensibilité (H1, H20, H50, H100).
+Ce script principal effectue une analyse multi-critères décisionnelle (MCDA) sur des données fictives pour comparer trois scénarios H2 : production 100% locale (type A), import régional (type B), import national/UE (type C). Il applique SAW (toujours), TOPSIS et PROMETHEE II (si PyMCDM installé) sur critères coût, GES, emploi, acceptabilité, avec poids par acteurs (industriels, collectivités, etc.) et horizons de sensibilité (H1, H20, H50, H100).
 ​
 
 # Installation
